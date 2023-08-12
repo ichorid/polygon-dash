@@ -12,6 +12,8 @@ uvicorn = "^0.22.0"
 fastapi = "^0.98.0"
 requests = "^2.31.0"
 pynng = "^0.7.2"
+psycopg2-binary = "^2.9.7"
+pyyaml = "^6.0.1"
 
 
 [tool.poetry.group.dev.dependencies]
