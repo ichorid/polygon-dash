@@ -1,6 +1,6 @@
-import threading
+import multiprocessing
 import time
-from queue import Queue
+from multiprocessing import Process
 from threading import Thread
 from time import sleep
 
@@ -22,22 +22,20 @@ class TransactionDumper:
     def __start_processing(self):
         num_transactions, prev_num_transactions = 0, 0
         start_tm = time.perf_counter()
-        while True:
-            with db_session:
-                if not self.__input_queue.empty():
-                    print(self.__input_queue.qsize())
-                while not self.__input_queue.empty():
-                    num_transactions += 1
-                    validator, tx_hash, tx_timestamp = self.__input_queue.get()
-                    transaction = Transaction.get(hash=tx_hash) or Transaction(hash=tx_hash)
-                    validator = Validator.get(pubkey=validator) or Validator(pubkey=validator)
-                    TransactionSeenEvent(transaction=transaction, validator=validator, timestamp=tx_timestamp, )
-                    elapsed_time = time.perf_counter() - start_tm
-                    if int(elapsed_time) % 10 == 0:
-                        commit()
-                    if (num_transactions - prev_num_transactions) > 10000:
-                        print(f"Avg. performance: {num_transactions/elapsed_time} trans/sec")
-                        prev_num_transactions = num_transactions
+        with db_session:
+            while True:
+                num_transactions += 1
+                validator, tx_hash, tx_timestamp = self.__input_queue.get()
+                transaction = Transaction.get(hash=tx_hash) or Transaction(hash=tx_hash)
+                validator = Validator.get(pubkey=validator) or Validator(pubkey=validator)
+                TransactionSeenEvent(transaction=transaction, validator=validator, timestamp=tx_timestamp, )
+                elapsed_time = time.perf_counter() - start_tm
+                # Commit to DB every 10th second
+                if int(elapsed_time) % 10 == 0:
+                    commit()
+                if (num_transactions - prev_num_transactions) > 1000:
+                    print(f"Avg. performance: {num_transactions/elapsed_time} trans/sec")
+                    prev_num_transactions = num_transactions
 
     def __create_processor_thread(self):
         self.__processor_thread = Thread(target=self.__start_processing)
@@ -50,7 +48,7 @@ class TransactionDumper:
 class Collector:
     def __init__(self, settings: CollectorSettings):
         self.settings = settings
-        self.__bot_to_dumper_queue = Queue()
+        self.__bot_to_dumper_queue = multiprocessing.Queue()
         self.__transaction_dumper = TransactionDumper(self.__bot_to_dumper_queue)
         self.__poller_bots = {bot_settings.url: BotPoller(self.__bot_to_dumper_queue, bot_settings) for bot_settings in
                               settings.poller_bots}
@@ -62,7 +60,7 @@ class Collector:
 
 
 class BotPoller:
-    def __init__(self, output_queue: Queue, settings: MempoolBotConnectionSettings):
+    def __init__(self, output_queue: multiprocessing.Queue, settings: MempoolBotConnectionSettings):
         self.__poller_thread = None
         self.__output_queue = output_queue
         self.settings = settings
@@ -94,7 +92,7 @@ class BotPoller:
         #sleep(0.3)
 
     def __create_poller_thread(self):
-        self.__poller_thread = Thread(target=self.__start_polling)
+        self.__poller_thread = Process(target=self.__start_polling)
         self.__poller_thread.start()
 
 
