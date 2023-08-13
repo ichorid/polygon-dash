@@ -4,4 +4,3 @@ database_connection:
 
 poller_bots:
     - url: 'tcp://localhost:50000'
-    - url: 'tcp://localhost:50001'

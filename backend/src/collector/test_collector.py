@@ -14,3 +14,22 @@ def test_serialize_transactions():
 def test_read_settings():
     with open('collector_settings.yaml', 'r') as file:
         settings = CollectorSettings(**yaml.safe_load(file))
+
+def test_select_or_insert():
+
+
+
+
+    sql = """
+    WITH input_rows(transaction_hash_key) AS (
+       VALUES
+          (bytea 'ab')
+        , ('ac')
+       )
+    , ins AS (
+       INSERT INTO transaction (transaction_hash_key) 
+       SELECT * FROM input_rows
+       ON CONFLICT (transaction_hash_key) DO NOTHING
+       RETURNING transaction_pkey
+       )
+    """
