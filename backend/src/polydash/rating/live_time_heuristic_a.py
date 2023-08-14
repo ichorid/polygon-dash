@@ -7,7 +7,6 @@ from pony import orm
 from polydash.log import LOGGER
 from polydash.model.node import Node
 from polydash.model.risk import MinerRisk
-from polydash.model.transaction_p2p import TransactionP2P
 from polydash.model.plagued_node import TransactionFetched, PlaguedBlock, PlaguedTransactionFound, PlaguedTransactionMissing, PlaguedNode
 
 BlockPoolHeuristicQueue = queue.Queue()

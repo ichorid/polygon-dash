@@ -7,7 +7,7 @@ from pony import orm
 from polydash.log import LOGGER
 from polydash.model.node import Node
 from polydash.model.risk import MinerRisk
-from polydash.model.transaction_p2p import TransactionP2P
+from polydash.model.transaction_p2p import TransactionP2P, TransactionSeenEvent
 
 TRANSACTION_WINDOW_SIZE = 700  # ~10 blocks
 
@@ -48,15 +48,13 @@ def calculate_mean_variance(node_pubkey, tx_live_time):
 def process_transaction(author_node, tx):
     # find the transaction in the list of the ones seen by P2P
     with orm.db_session:
-        # Pony kept throwing exception at me with both generator and lambda select syntax, so raw SQL
-        tx_p2p = TransactionP2P.get_by_sql(
-            'SELECT * FROM tx_summary WHERE tx_hash="{}" ORDER BY tx_first_seen LIMIT 1'.format(tx.hash))
+        tx_p2p = TransactionSeenEvent.select(tx_hash=tx.hash).order_by(TransactionSeenEvent.timestamp).first()
         if tx_p2p is None:
             # we haven't seen it
             return
 
     # get the live-time of this transaction
-    live_time = tx.created - tx_p2p.tx_first_seen
+    live_time = tx.created - tx_p2p.timestamp
     if live_time <= 0:
         return
 
